@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Numerador de Páginas PDF | 100% Local e Privado</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonte Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- pdf-lib para manipulação e geração do PDF -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    
+    <!-- PDF.js para renderização da pré-visualização -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Customizações sutis de scrollbar e inputs */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        /* Padrão quadriculado sutil para o fundo da área de preview */
+        .preview-bg {
+            background-color: #e2e8f0;
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 16px 16px;
+        }
+
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            padding: 0;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        input[type="color"]::-webkit-color-swatch {
+            border: 1px solid #cbd5e1;
+            border-radius: 0.375rem;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- Notificação Toast (Substitui alert()) -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Cabeçalho -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-brand-600 text-white p-2 rounded-xl shadow-sm">
+                    <i data-lucide="file-digit" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 leading-tight">Numerador PDF</h1>
+                    <p class="text-xs text-slate-500 hidden sm:block">Numeração automática 100% no navegador</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                    Privacidade Total (Offline)
+                </span>
+                
+                <button id="btn-new-file" class="hidden items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+                    <i data-lucide="upload" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Trocar PDF</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="flex-1 flex flex-col">
+        
+        <!-- TELA 1: Área de Upload -->
+        <section id="upload-section" class="flex-1 flex items-center justify-center p-4 sm:p-8">
+            <div class="max-w-xl w-full">
+                <div id="drop-zone" class="bg-white border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-2xl p-8 sm:p-12 text-center transition-all cursor-pointer shadow-sm hover:shadow-md group">
+                    <input type="file" id="file-input" accept="application/pdf" class="hidden">
+                    
+                    <div class="w-16 h-16 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform">
+                        <i data-lucide="file-up" class="w-8 h-8"></i>
+                    </div>
+                    
+                    <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mb-2">
+                        Selecione ou arraste seu PDF
+                    </h2>
+                    <p class="text-sm text-slate-500 mb-6 max-w-md mx-auto">
+                        Adicione numeração personalizada em todas as páginas rapidamente. Seus arquivos nunca saem do seu computador.
+                    </p>
+                    
+                    <button type="button" class="inline-flex items-center gap-2 px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-xl shadow-sm transition-colors">
+                        <i data-lucide="folder-open" class="w-5 h-5"></i>
+                        Escolher Arquivo PDF
+                    </button>
+                    
+                    <p class="text-xs text-slate-400 mt-4">
+                        Suporta arquivos PDF de qualquer tamanho
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- TELA 2: Editor e Pré-visualização -->
+        <section id="editor-section" class="hidden flex-1 flex flex-col lg:flex-row max-w-7xl w-full mx-auto">
+            
+            <!-- Coluna Esquerda: Painel de Configurações -->
+            <aside class="w-full lg:w-96 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16">
+                
+                <!-- Info do Arquivo -->
+                <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <i data-lucide="file-text" class="w-5 h-5 text-brand-600 shrink-0"></i>
+                        <div class="min-w-0">
+                            <p id="file-name-display" class="text-sm font-semibold text-slate-800 truncate">documento.pdf</p>
+                            <p id="file-pages-display" class="text-xs text-slate-500">0 páginas</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulário de Configurações com Scroll -->
+                <div class="p-5 overflow-y-auto flex-1 space-y-6">
+                    
+                    <!-- 1. Posição da Numeração -->
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2.5">
+                            1. Posição na Página
+                        </label>
+                        <div class="grid grid-cols-3 gap-2 bg-slate-100 p-2 rounded-xl border border-slate-200">
+                            <button type="button" data-pos="top-left" class="pos-btn p-2.5 rounded-lg text-xs font-medium flex flex-col items-center gap-1 transition-all bg-white text-slate-600 hover:bg-slate-50 border border-transparent">
+                                <div class="w-6 h-4 border border-current rounded-sm relative"><span class="w-1.5 h-1 bg-current absolute top-0.5 left-0.5"></span></div>
+                                Sup. Esq
+                            </button>
+                            <button type="button" data-pos="top-center" class="pos-btn p-2.5 rounded-lg text-xs font-medium flex flex-col items-center gap-1 transition-all bg-white text-slate-600 hover:bg-slate-50 border border-transparent">
+                                <div class="w-6 h-4 border border-current rounded-sm relative"><span class="w-1.5 h-1 bg-current absolute top-0.5 left-1/2 -translate-x-1/2"></span></div>
+                                Sup. Centro
+                            </button>
+                            <button type="button" data-pos="top-right" class="pos-btn p-2.5 rounded-lg text-xs font-medium flex flex-col items-center gap-1 transition-all bg-white text-slate-600 hover:bg-slate-50 border border-transparent">
+                                <div class="w-6 h-4 border border-current rounded-sm relative"><span class="w-1.5 h-1 bg-current absolute top-0.5 right-0.5"></span></div>
+                                Sup. Dir
+                            </button>
+                            <button type="button" data-pos="bottom-left" class="pos-btn p-2.5 rounded-lg text-xs font-medium flex flex-col items-center gap-1 transition-all bg-white text-slate-600 hover:bg-slate-50 border border-transparent">
+                                <div class="w-6 h-4 border border-current rounded-sm relative"><span class="w-1.5 h-1 bg-current absolute bottom-0.5 left-0.5"></span></div>
+                                Inf. Esq
+                            </button>
+                            <button type="button" data-pos="bottom-center" class="pos-btn p-2.5 rounded-lg text-xs font-medium flex flex-col items-center gap-1 transition-all bg-white text-slate-600 hover:bg-slate-50 border border-transparent">
+                                <div class="w-6 h-4 border border-current rounded-sm relative"><span class="w-1.5 h-1 bg-current absolute bottom-0.5 left-1/2 -translate-x-1/2"></span></div>
+                                Inf. Centro
+                            </button>
+                            <button type="button" data-pos="bottom-right" class="pos-btn active p-2.5 rounded-lg text-xs font-medium flex flex-col items-center gap-1 transition-all bg-brand-600 text-white shadow-sm">
+                                <div class="w-6 h-4 border border-current rounded-sm relative"><span class="w-1.5 h-1 bg-current absolute bottom-0.5 right-0.5"></span></div>
+                                Inf. Dir
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 2. Formato do Texto -->
+                    <div>
+                        <label for="format-select" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                            2. Formato do Texto
+                        </label>
+                        <select id="format-select" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                            <option value="{n}">Apenas número (1, 2, 3...)</option>
+                            <option value="Página {n}">Página 1, Página 2...</option>
+                            <option value="{n} / {total}">1 / 10</option>
+                            <option value="Página {n} de {total}" selected>Página 1 de 10</option>
+                            <option value="custom">Personalizado...</option>
+                        </select>
+
+                        <!-- Input para formato personalizado -->
+                        <div id="custom-format-wrapper" class="hidden mt-2.5">
+                            <input type="text" id="custom-format-input" value="Pág. {n} de {total}" placeholder="Ex: Pág. {n} de {total}" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none">
+                            <p class="text-[11px] text-slate-500 mt-1">
+                                Use <code class="bg-slate-100 px-1 rounded text-brand-700 font-semibold">{n}</code> para o número atual e <code class="bg-slate-100 px-1 rounded text-brand-700 font-semibold">{total}</code> para o total.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 3. Regras de Contagem -->
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                            3. Contagem e Páginas
+                        </label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label for="start-number" class="block text-xs font-medium text-slate-700 mb-1">Iniciar numeração em</label>
+                                <input type="number" id="start-number" value="1" min="0" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label for="skip-pages" class="block text-xs font-medium text-slate-700 mb-1">Ignorar primeiras págs.</label>
+                                <input type="number" id="skip-pages" value="0" min="0" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none">
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1.5">Ex: Ignorar 1 página pula a capa sem numerá-la.</p>
+                    </div>
+
+                    <!-- 4. Estilo e Tipografia -->
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                            4. Aparência e Margens
+                        </label>
+                        
+                        <div class="space-y-3">
+                            <!-- Tamanho e Cor da Fonte -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label for="font-size" class="block text-xs font-medium text-slate-700 mb-1">Tamanho (pt)</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" id="font-size" value="12" min="6" max="72" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="text-color" class="block text-xs font-medium text-slate-700 mb-1">Cor do Texto</label>
+                                    <div class="flex items-center gap-2 border border-slate-300 rounded-xl px-2.5 py-1.5 bg-white">
+                                        <input type="color" id="text-color" value="#1e293b" class="w-6 h-6 cursor-pointer rounded">
+                                        <span id="text-color-hex" class="text-xs font-mono text-slate-600 uppercase">#1E293B</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Fonte -->
+                            <div>
+                                <label for="font-family" class="block text-xs font-medium text-slate-700 mb-1">Fonte</label>
+                                <select id="font-family" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none">
+                                    <option value="Helvetica">Helvetica / Sans-serif</option>
+                                    <option value="TimesRoman">Times New Roman / Serif</option>
+                                    <option value="Courier">Courier / Monospace</option>
+                                </select>
+                            </div>
+
+                            <!-- Margens X e Y -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label for="margin-x" class="block text-xs font-medium text-slate-700 mb-1">Margem Horizontal (pt)</label>
+                                    <input type="number" id="margin-x" value="36" min="0" max="200" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label for="margin-y" class="block text-xs font-medium text-slate-700 mb-1">Margem Vertical (pt)</label>
+                                    <input type="number" id="margin-y" value="28" min="0" max="200" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. Caixa de Fundo (Opcional) -->
+                    <div class="pt-2 border-t border-slate-100">
+                        <div class="flex items-center justify-between mb-2">
+                            <label for="bg-enabled" class="text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer">
+                                5. Fundo / Destaque atrás
+                            </label>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="bg-enabled" class="sr-only peer">
+                                <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-600"></div>
+                            </label>
+                        </div>
+
+                        <div id="bg-options" class="hidden grid grid-cols-2 gap-3 mt-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                            <div>
+                                <label for="bg-color" class="block text-xs font-medium text-slate-700 mb-1">Cor do Fundo</label>
+                                <div class="flex items-center gap-2 border border-slate-300 rounded-lg px-2 py-1 bg-white">
+                                    <input type="color" id="bg-color" value="#ffffff" class="w-5 h-5 cursor-pointer rounded">
+                                    <span id="bg-color-hex" class="text-xs font-mono text-slate-600 uppercase">#FFFFFF</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="bg-opacity" class="block text-xs font-medium text-slate-700 mb-1">Opacidade (<span id="bg-opacity-val">85</span>%)</label>
+                                <input type="range" id="bg-opacity" min="10" max="100" value="85" class="w-full accent-brand-600 mt-2">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Botão Fixo de Ação -->
+                <div class="p-4 bg-white border-t border-slate-200">
+                    <button id="btn-download" class="w-full py-3.5 px-4 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer">
+                        <i data-lucide="download" class="w-5 h-5"></i>
+                        <span>Processar e Baixar PDF Numerado</span>
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Coluna Direita: Área de Pré-visualização -->
+            <div class="flex-1 flex flex-col preview-bg min-h-[500px] lg:h-[calc(100vh-4rem)]">
+                
+                <!-- Barra Superior de Navegação do Preview -->
+                <div class="bg-white/90 backdrop-blur-sm border-b border-slate-200 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-sm z-10">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                            <i data-lucide="eye" class="w-4 h-4 text-brand-600"></i>
+                            Pré-visualização em tempo real
+                        </span>
+                    </div>
+
+                    <!-- Controles de Paginação -->
+                    <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                        <button id="btn-prev-page" class="p-1.5 rounded-lg hover:bg-white text-slate-700 disabled:opacity-40 disabled:pointer-events-none transition-colors" title="Página Anterior">
+                            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                        </button>
+                        
+                        <div class="flex items-center gap-1.5 px-2 text-xs font-medium text-slate-700">
+                            <span>Página</span>
+                            <input type="number" id="current-page-input" value="1" min="1" class="w-12 text-center bg-white border border-slate-300 rounded-md py-0.5 font-semibold focus:outline-none focus:border-brand-500">
+                            <span>de <span id="total-pages-label">1</span></span>
+                        </div>
+
+                        <button id="btn-next-page" class="p-1.5 rounded-lg hover:bg-white text-slate-700 disabled:opacity-40 disabled:pointer-events-none transition-colors" title="Próxima Página">
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+
+                    <!-- Status da Página Atual -->
+                    <div id="page-status-badge" class="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                        Será numerada
+                    </div>
+                </div>
+
+                <!-- Container do Canvas de Visualização -->
+                <div id="canvas-container" class="flex-1 overflow-auto p-4 sm:p-8 flex items-center justify-center relative">
+                    
+                    <!-- Loader -->
+                    <div id="preview-loader" class="hidden absolute inset-0 bg-slate-100/80 backdrop-blur-xs flex flex-col items-center justify-center z-20">
+                        <div class="w-10 h-10 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin mb-3"></div>
+                        <p class="text-sm font-medium text-slate-700">Renderizando página...</p>
+                    </div>
+
+                    <!-- Wrapper Relativo para o PDF + Camada de Numeração -->
+                    <div id="page-wrapper" class="relative shadow-2xl bg-white transition-all duration-200 border border-slate-300">
+                        <canvas id="pdf-canvas" class="block max-w-full h-auto"></canvas>
+                        <!-- Camada overlay exata que simula a posição e estilo no PDF -->
+                        <div id="overlay-layer" class="absolute inset-0 pointer-events-none overflow-hidden">
+                            <div id="preview-number-tag" class="absolute whitespace-nowrap transition-all duration-75 leading-none">
+                                Página 1 de 10
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Overlay de Processamento Final -->
+    <div id="processing-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl">
+            <div class="w-12 h-12 border-4 border-brand-100 border-t-brand-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <h3 class="text-lg font-bold text-slate-900 mb-1">Numerando seu PDF...</h3>
+            <p class="text-sm text-slate-500">Aplicando numeração em todas as páginas. Isso leva apenas alguns instantes.</p>
+        </div>
+    </div>
+
+    <script>
+        // Inicializar ícones Lucide
+        lucide.createIcons();
+
+        // Configurar worker do PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Estado Global da Aplicação
+        const state = {
+            fileBytes: null,
+            fileName: 'documento.pdf',
+            pdfJsDoc: null,
+            totalPages: 0,
+            currentPage: 1,
+            currentScale: 1,
+            pageViewportWidth: 0,
+            pageViewportHeight: 0,
+            // Configurações de numeração
+            position: 'bottom-right',
+            format: 'Página {n} de {total}',
+            customFormat: 'Pág. {n} de {total}',
+            startNumber: 1,
+            skipPages: 0,
+            fontSize: 12,
+            textColor: '#1e293b',
+            fontFamily: 'Helvetica',
+            marginX: 36,
+            marginY: 28,
+            bgEnabled: false,
+            bgColor: '#ffffff',
+            bgOpacity: 85
+        };
+
+        // Elementos do DOM
+        const els = {
+            uploadSection: document.getElementById('upload-section'),
+            editorSection: document.getElementById('editor-section'),
+            dropZone: document.getElementById('drop-zone'),
+            fileInput: document.getElementById('file-input'),
+            btnNewFile: document.getElementById('btn-new-file'),
+            fileNameDisplay: document.getElementById('file-name-display'),
+            filePagesDisplay: document.getElementById('file-pages-display'),
+            
+            // Controles
+            posBtns: document.querySelectorAll('.pos-btn'),
+            formatSelect: document.getElementById('format-select'),
+            customFormatWrapper: document.getElementById('custom-format-wrapper'),
+            customFormatInput: document.getElementById('custom-format-input'),
+            startNumber: document.getElementById('start-number'),
+            skipPages: document.getElementById('skip-pages'),
+            fontSize: document.getElementById('font-size'),
+            textColor: document.getElementById('text-color'),
+            textColorHex: document.getElementById('text-color-hex'),
+            fontFamily: document.getElementById('font-family'),
+            marginX: document.getElementById('margin-x'),
+            marginY: document.getElementById('margin-y'),
+            bgEnabled: document.getElementById('bg-enabled'),
+            bgOptions: document.getElementById('bg-options'),
+            bgColor: document.getElementById('bg-color'),
+            bgColorHex: document.getElementById('bg-color-hex'),
+            bgOpacity: document.getElementById('bg-opacity'),
+            bgOpacityVal: document.getElementById('bg-opacity-val'),
+            
+            // Preview e Paginação
+            btnPrevPage: document.getElementById('btn-prev-page'),
+            btnNextPage: document.getElementById('btn-next-page'),
+            currentPageInput: document.getElementById('current-page-input'),
+            totalPagesLabel: document.getElementById('total-pages-label'),
+            pageStatusBadge: document.getElementById('page-status-badge'),
+            canvasContainer: document.getElementById('canvas-container'),
+            pageWrapper: document.getElementById('page-wrapper'),
+            pdfCanvas: document.getElementById('pdf-canvas'),
+            previewNumberTag: document.getElementById('preview-number-tag'),
+            previewLoader: document.getElementById('preview-loader'),
+            
+            // Ação Final
+            btnDownload: document.getElementById('btn-download'),
+            processingModal: document.getElementById('processing-modal')
+        };
+
+        // Sistema de Notificação Toast (Sem usar alert())
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const colors = {
+                info: 'bg-slate-800 text-white',
+                success: 'bg-emerald-600 text-white',
+                error: 'bg-red-600 text-white'
+            };
+
+            const icons = {
+                info: 'info',
+                success: 'check-circle',
+                error: 'alert-circle'
+            };
+
+            toast.className = `${colors[type]} px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 text-sm font-medium transform transition-all duration-300 translate-x-full opacity-0 pointer-events-auto`;
+            toast.innerHTML = `<i data-lucide="${icons[type]}" class="w-4 h-4 shrink-0"></i><span>${message}</span>`;
+            
+            container.appendChild(toast);
+            lucide.createIcons({ root: toast });
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-x-full', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // ==========================================
+        // 1. UPLOAD E CARREGAMENTO DO PDF
+        // ==========================================
+        els.dropZone.addEventListener('click', () => els.fileInput.click());
+        els.btnNewFile.addEventListener('click', () => els.fileInput.click());
+
+        els.dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            els.dropZone.classList.add('border-brand-500', 'bg-brand-50/40');
+        });
+
+        els.dropZone.addEventListener('dragleave', () => {
+            els.dropZone.classList.remove('border-brand-500', 'bg-brand-50/40');
+        });
+
+        els.dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            els.dropZone.classList.remove('border-brand-500', 'bg-brand-50/40');
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                handleFileSelection(e.dataTransfer.files[0]);
+            }
+        });
+
+        els.fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                handleFileSelection(e.target.files[0]);
+            }
+        });
+
+        async function handleFileSelection(file) {
+            if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                showToast('Por favor, selecione um arquivo PDF válido.', 'error');
+                return;
+            }
+
+            try {
+                state.fileName = file.name;
+                const arrayBuffer = await file.arrayBuffer();
+                // Armazenar uma cópia limpa dos bytes para o pdf-lib usar no final
+                state.fileBytes = new Uint8Array(arrayBuffer);
+
+                // Carregar no PDF.js para preview (passando uma cópia para evitar detachment do buffer)
+                const loadingTask = pdfjsLib.getDocument({ data: state.fileBytes.slice() });
+                state.pdfJsDoc = await loadingTask.promise;
+                state.totalPages = state.pdfJsDoc.numPages;
+                state.currentPage = 1;
+
+                // Atualizar UI
+                els.fileNameDisplay.textContent = state.fileName;
+                els.filePagesDisplay.textContent = `${state.totalPages} ${state.totalPages === 1 ? 'página' : 'páginas'}`;
+                els.totalPagesLabel.textContent = state.totalPages;
+                els.currentPageInput.max = state.totalPages;
+                els.skipPages.max = Math.max(0, state.totalPages - 1);
+
+                // Alternar telas
+                els.uploadSection.classList.add('hidden');
+                els.editorSection.classList.remove('hidden');
+                els.btnNewFile.classList.remove('hidden');
+                els.btnNewFile.classList.add('inline-flex');
+
+                showToast('PDF carregado com sucesso!', 'success');
+                await renderPreviewPage(1);
+
+            } catch (error) {
+                console.error('Erro ao abrir PDF:', error);
+                showToast('Não foi possível ler este PDF. Verifique se não está protegido por senha.', 'error');
+            }
+        }
+
+        // ==========================================
+        // 2. RENDERIZAÇÃO DA PRÉ-VISUALIZAÇÃO
+        // ==========================================
+        async function renderPreviewPage(pageNum) {
+            if (!state.pdfJsDoc) return;
+            
+            pageNum = Math.max(1, Math.min(pageNum, state.totalPages));
+            state.currentPage = pageNum;
+            els.currentPageInput.value = pageNum;
+
+            // Atualizar botões de paginação
+            els.btnPrevPage.disabled = pageNum <= 1;
+            els.btnNextPage.disabled = pageNum >= state.totalPages;
+
+            els.previewLoader.classList.remove('hidden');
+
+            try {
+                const page = await state.pdfJsDoc.getPage(pageNum);
+                
+                // Calcular escala responsiva para caber bem no container
+                const unscaledViewport = page.getViewport({ scale: 1 });
+                const containerWidth = els.canvasContainer.clientWidth - 48; // padding
+                const containerHeight = Math.max(500, els.canvasContainer.clientHeight - 48);
+                
+                const scaleX = containerWidth / unscaledViewport.width;
+                const scaleY = containerHeight / unscaledViewport.height;
+                const scale = Math.min(scaleX, scaleY, 1.5); // Limitar zoom máximo a 1.5x
+
+                state.currentScale = scale;
+                const viewport = page.getViewport({ scale });
+
+                // Ajustar resolução para telas Retina/HiDPI
+                const outputScale = window.devicePixelRatio || 1;
+                const canvas = els.pdfCanvas;
+                const context = canvas.getContext('2d');
+
+                canvas.width = Math.floor(viewport.width * outputScale);
+                canvas.height = Math.floor(viewport.height * outputScale);
+                canvas.style.width = `${Math.floor(viewport.width)}px`;
+                canvas.style.height = `${Math.floor(viewport.height)}px`;
+
+                els.pageWrapper.style.width = `${Math.floor(viewport.width)}px`;
+                els.pageWrapper.style.height = `${Math.floor(viewport.height)}px`;
+
+                const transform = outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : null;
+
+                await page.render({
+                    canvasContext: context,
+                    transform: transform,
+                    viewport: viewport
+                }).promise;
+
+                updatePreviewOverlay();
+            } catch (err) {
+                console.error('Erro ao renderizar página:', err);
+            } finally {
+                els.previewLoader.classList.add('hidden');
+            }
+        }
+
+        // Calcula o texto formatado para uma determinada página (índice base 1)
+        function getFormattedTextForPage(pageIndex1Based) {
+            if (pageIndex1Based <= state.skipPages) {
+                return null; // Página ignorada
+            }
+
+            const effectivePageNumber = (pageIndex1Based - state.skipPages) + (state.startNumber - 1);
+            const effectiveTotalPages = Math.max(1, (state.totalPages - state.skipPages) + (state.startNumber - 1));
+
+            const template = state.format === 'custom' ? state.customFormat : state.format;
+            return template
+                .replace(/\{n\}/gi, effectivePageNumber)
+                .replace(/\{total\}/gi, effectiveTotalPages);
+        }
+
+        // Atualiza a camada HTML sobre o canvas para refletir exatamente as configurações
+        function updatePreviewOverlay() {
+            const tag = els.previewNumberTag;
+            const text = getFormattedTextForPage(state.currentPage);
+
+            if (text === null) {
+                tag.classList.add('hidden');
+                els.pageStatusBadge.textContent = 'Página ignorada (sem número)';
+                els.pageStatusBadge.className = 'text-xs font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200';
+                return;
+            }
+
+            tag.classList.remove('hidden');
+            els.pageStatusBadge.textContent = `Exibindo: "${text}"`;
+            els.pageStatusBadge.className = 'text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200';
+
+            tag.textContent = text;
+
+            // Escalar fontes e margens proporcionalmente ao zoom do preview
+            const s = state.currentScale;
+            const scaledFontSize = state.fontSize * s;
+            const scaledMarginX = state.marginX * s;
+            const scaledMarginY = state.marginY * s;
+
+            tag.style.fontSize = `${scaledFontSize}px`;
+            tag.style.color = state.textColor;
+
+            // Família da fonte
+            const fontMap = {
+                'Helvetica': 'Helvetica, Arial, sans-serif',
+                'TimesRoman': '"Times New Roman", Times, serif',
+                'Courier': '"Courier New", Courier, monospace'
+            };
+            tag.style.fontFamily = fontMap[state.fontFamily] || 'sans-serif';
+
+            // Fundo opcional
+            if (state.bgEnabled) {
+                const rgb = hexToRgb(state.bgColor);
+                const alpha = state.bgOpacity / 100;
+                tag.style.backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+                tag.style.padding = `${3 * s}px ${6 * s}px`;
+                tag.style.borderRadius = `${3 * s}px`;
+            } else {
+                tag.style.backgroundColor = 'transparent';
+                tag.style.padding = '0px';
+            }
+
+            // Resetar posicionamento
+            tag.style.top = 'auto';
+            tag.style.bottom = 'auto';
+            tag.style.left = 'auto';
+            tag.style.right = 'auto';
+            tag.style.transform = 'none';
+
+            // Aplicar coordenadas baseadas na posição escolhida
+            const [vPos, hPos] = state.position.split('-');
+
+            if (vPos === 'top') {
+                tag.style.top = `${scaledMarginY}px`;
+            } else {
+                tag.style.bottom = `${scaledMarginY}px`;
+            }
+
+            if (hPos === 'left') {
+                tag.style.left = `${scaledMarginX}px`;
+            } else if (hPos === 'right') {
+                tag.style.right = `${scaledMarginX}px`;
+            } else {
+                tag.style.left = '50%';
+                tag.style.transform = 'translateX(-50%)';
+            }
+        }
+
+        // ==========================================
+        // 3. EVENTOS DO PAINEL DE CONFIGURAÇÕES
+        // ==========================================
+        els.posBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                els.posBtns.forEach(b => {
+                    b.classList.remove('active', 'bg-brand-600', 'text-white', 'shadow-sm');
+                    b.classList.add('bg-white', 'text-slate-600');
+                });
+                btn.classList.remove('bg-white', 'text-slate-600');
+                btn.classList.add('active', 'bg-brand-600', 'text-white', 'shadow-sm');
+                
+                state.position = btn.dataset.pos;
+                updatePreviewOverlay();
+            });
+        });
+
+        els.formatSelect.addEventListener('change', (e) => {
+            state.format = e.target.value;
+            if (state.format === 'custom') {
+                els.customFormatWrapper.classList.remove('hidden');
+            } else {
+                els.customFormatWrapper.classList.add('hidden');
+            }
+            updatePreviewOverlay();
+        });
+
+        els.customFormatInput.addEventListener('input', (e) => {
+            state.customFormat = e.target.value;
+            updatePreviewOverlay();
+        });
+
+        els.startNumber.addEventListener('input', (e) => {
+            state.startNumber = parseInt(e.target.value) || 0;
+            updatePreviewOverlay();
+        });
+
+        els.skipPages.addEventListener('input', (e) => {
+            state.skipPages = Math.max(0, parseInt(e.target.value) || 0);
+            updatePreviewOverlay();
+        });
+
+        els.fontSize.addEventListener('input', (e) => {
+            state.fontSize = Math.max(4, parseInt(e.target.value) || 12);
+            updatePreviewOverlay();
+        });
+
+        els.textColor.addEventListener('input', (e) => {
+            state.textColor = e.target.value;
+            els.textColorHex.textContent = e.target.value.toUpperCase();
+            updatePreviewOverlay();
+        });
+
+        els.fontFamily.addEventListener('change', (e) => {
+            state.fontFamily = e.target.value;
+            updatePreviewOverlay();
+        });
+
+        els.marginX.addEventListener('input', (e) => {
+            state.marginX = Math.max(0, parseInt(e.target.value) || 0);
+            updatePreviewOverlay();
+        });
+
+        els.marginY.addEventListener('input', (e) => {
+            state.marginY = Math.max(0, parseInt(e.target.value) || 0);
+            updatePreviewOverlay();
+        });
+
+        els.bgEnabled.addEventListener('change', (e) => {
+            state.bgEnabled = e.target.checked;
+            if (state.bgEnabled) {
+                els.bgOptions.classList.remove('hidden');
+            } else {
+                els.bgOptions.classList.add('hidden');
+            }
+            updatePreviewOverlay();
+        });
+
+        els.bgColor.addEventListener('input', (e) => {
+            state.bgColor = e.target.value;
+            els.bgColorHex.textContent = e.target.value.toUpperCase();
+            updatePreviewOverlay();
+        });
+
+        els.bgOpacity.addEventListener('input', (e) => {
+            state.bgOpacity = parseInt(e.target.value);
+            els.bgOpacityVal.textContent = state.bgOpacity;
+            updatePreviewOverlay();
+        });
+
+        // Controles de paginação
+        els.btnPrevPage.addEventListener('click', () => renderPreviewPage(state.currentPage - 1));
+        els.btnNextPage.addEventListener('click', () => renderPreviewPage(state.currentPage + 1));
+        els.currentPageInput.addEventListener('change', (e) => {
+            const target = parseInt(e.target.value) || 1;
+            renderPreviewPage(target);
+        });
+
+        // Redimensionamento responsivo da janela
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (state.pdfJsDoc) renderPreviewPage(state.currentPage);
+            }, 200);
+        });
+
+        // ==========================================
+        // 4. PROCESSAMENTO E DOWNLOAD COM PDF-LIB
+        // ==========================================
+        els.btnDownload.addEventListener('click', async () => {
+            if (!state.fileBytes) return;
+
+            els.processingModal.classList.remove('hidden');
+
+            // Pequeno delay para permitir que o modal apareça suavemente
+            setTimeout(async () => {
+                try {
+                    const { PDFDocument, rgb, StandardFonts, degrees } = PDFLib;
+                    
+                    // Carregar o PDF original
+                    const pdfDoc = await PDFDocument.load(state.fileBytes);
+
+                    // Incorporar a fonte selecionada
+                    const fontStandardMap = {
+                        'Helvetica': StandardFonts.Helvetica,
+                        'TimesRoman': StandardFonts.TimesRoman,
+                        'Courier': StandardFonts.Courier
+                    };
+                    const embeddedFont = await pdfDoc.embedFont(fontStandardMap[state.fontFamily] || StandardFonts.Helvetica);
+
+                    // Converter cores
+                    const txtRgbObj = hexToRgb(state.textColor);
+                    const pdfTextColor = rgb(txtRgbObj.r / 255, txtRgbObj.g / 255, txtRgbObj.b / 255);
+
+                    const bgRgbObj = hexToRgb(state.bgColor);
+                    const pdfBgColor = rgb(bgRgbObj.r / 255, bgRgbObj.g / 255, bgRgbObj.b / 255);
+                    const pdfBgOpacity = state.bgOpacity / 100;
+
+                    const pages = pdfDoc.getPages();
+                    const [vPos, hPos] = state.position.split('-');
+
+                    pages.forEach((page, index) => {
+                        const pageNum1Based = index + 1;
+                        const text = getFormattedTextForPage(pageNum1Based);
+                        
+                        // Pular páginas ignoradas
+                        if (text === null) return;
+
+                        // Obter dimensões reais da página (considerando CropBox/MediaBox)
+                        const { width, height } = page.getSize();
+                        const textWidth = embeddedFont.widthOfTextAtSize(text, state.fontSize);
+                        const textHeight = embeddedFont.heightAtSize(state.fontSize);
+
+                        // Padding caso tenha caixa de fundo
+                        const padX = state.bgEnabled ? 6 : 0;
+                        const padY = state.bgEnabled ? 3 : 0;
+                        const boxWidth = textWidth + (padX * 2);
+                        const boxHeight = textHeight + (padY * 2);
+
+                        // Calcular coordenada X (no pdf-lib, X=0 é esquerda)
+                        let drawX = 0;
+                        if (hPos === 'left') {
+                            drawX = state.marginX + padX;
+                        } else if (hPos === 'right') {
+                            drawX = width - state.marginX - textWidth - padX;
+                        } else {
+                            drawX = (width / 2) - (textWidth / 2);
+                        }
+
+                        // Calcular coordenada Y (no pdf-lib, Y=0 é na base inferior da página!)
+                        let drawY = 0;
+                        if (vPos === 'bottom') {
+                            // Ajuste leve da linha de base da fonte
+                            drawY = state.marginY + padY + (state.fontSize * 0.15);
+                        } else {
+                            drawY = height - state.marginY - textHeight - padY + (state.fontSize * 0.15);
+                        }
+
+                        // Desenhar retângulo de fundo se ativado
+                        if (state.bgEnabled) {
+                            page.drawRectangle({
+                                x: drawX - padX,
+                                y: drawY - padY - (state.fontSize * 0.15),
+                                width: boxWidth,
+                                height: boxHeight,
+                                color: pdfBgColor,
+                                opacity: pdfBgOpacity,
+                            });
+                        }
+
+                        // Desenhar o texto da numeração
+                        page.drawText(text, {
+                            x: drawX,
+                            y: drawY,
+                            size: state.fontSize,
+                            font: embeddedFont,
+                            color: pdfTextColor,
+                        });
+                    });
+
+                    // Salvar bytes do novo PDF
+                    const modifiedPdfBytes = await pdfDoc.save();
+
+                    // Disparar download automático
+                    const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    
+                    const baseName = state.fileName.replace(/\.pdf$/i, '');
+                    a.href = url;
+                    a.download = `${baseName}_numerado.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    showToast('PDF numerado baixado com sucesso!', 'success');
+
+                } catch (err) {
+                    console.error('Erro ao gerar PDF:', err);
+                    showToast('Ocorreu um erro ao processar o PDF.', 'error');
+                } finally {
+                    els.processingModal.classList.add('hidden');
+                }
+            }, 100);
+        });
+
+        // Utilitário: Converter Hex (#RRGGBB) para RGB
+        function hexToRgb(hex) {
+            const cleanHex = hex.replace('#', '');
+            const bigint = parseInt(cleanHex, 16);
+            return {
+                r: (bigint >> 16) & 255,
+                g: (bigint >> 8) & 255,
+                b: bigint & 255
+            };
+        }
+    </script>
+</body>
+</html>
